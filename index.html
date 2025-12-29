@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0a0f1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+   
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Retailuz - Smart Business Management" />
+    <meta property="og:description" content="Transform handwritten notes into digital records with AI. Track your business finances effortlessly." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://retailuz.com" />
+    
+    
+    
+    <!-- Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    
+    <style>
+      /* Safe area padding for mobile */
+      :root {
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .pb-safe {
+        padding-bottom: var(--safe-area-inset-bottom);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
