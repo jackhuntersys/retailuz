@@ -1,62 +1,28 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+import type {
+  TelegramUser,
+  TelegramAuthState,
+  TelegramContextType,
+} from '@/types/telegram'
 
-interface TelegramUser {
-  telegram_id: number
-  first_name: string
-  last_name?: string
-  username?: string
-  photo_url?: string
-  language_code?: string
-}
-
-interface TelegramAuthState {
-  user: TelegramUser | null
-  isLoading: boolean
-  error: string | null
-  isTelegramWebApp: boolean
-}
-
-const STORAGE_KEY = 'telegram_user'
+const BACKEND_URL = 'https://confocal-cuc-thankfully.ngrok-free.dev'
+const TOKEN_KEY = 'telegram_token'
+const USER_KEY = 'telegram_user'
 
 declare global {
   interface Window {
     Telegram?: {
-      WebApp: {
-        initData: string
-        initDataUnsafe: {
-          user?: {
-            id: number
-            first_name: string
-            last_name?: string
-            username?: string
-            photo_url?: string
-            language_code?: string
-          }
-        }
+      WebApp?: {
+        initData?: string
         ready: () => void
         expand: () => void
         close: () => void
-        MainButton: {
-          text: string
-          show: () => void
-          hide: () => void
-          onClick: (callback: () => void) => void
-        }
-        themeParams: {
-          bg_color?: string
-          text_color?: string
-          hint_color?: string
-          link_color?: string
-          button_color?: string
-          button_text_color?: string
-        }
       }
     }
   }
 }
 
-export function useTelegramAuth() {
+export function useTelegramAuth(): TelegramContextType {
   const [state, setState] = useState<TelegramAuthState>({
     user: null,
     isLoading: true,
@@ -64,90 +30,95 @@ export function useTelegramAuth() {
     isTelegramWebApp: false,
   })
 
-  const validateAndAuth = useCallback(async (initData: string) => {
+  const authenticate = useCallback(async (initData: string) => {
     try {
-      console.log('Validating Telegram init data...')
-      
-      const { data, error } = await supabase.functions.invoke('telegram-auth', {
-        body: { initData }
+      const response = await fetch(`${BACKEND_URL}/telegram/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ initData }),
       })
 
-      if (error) {
-        console.error('Telegram auth error:', error)
-        throw new Error(error.message || 'Authentication failed')
+      if (!response.ok) {
+        throw new Error('Failed to authenticate with backend')
       }
 
-      if (data?.success && data?.user) {
-        console.log('Telegram auth successful:', data.user)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user))
-        setState(prev => ({
-          ...prev,
-          user: data.user,
-          isLoading: false,
-          error: null,
-        }))
-        return data.user
-      } else {
-        throw new Error('Invalid response from auth server')
+      const data = await response.json()
+
+      if (!data?.success || !data?.user || !data?.token) {
+        throw new Error('Invalid authentication response')
       }
-    } catch (error) {
-      console.error('Auth error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
+
+      localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user))
+
+      setState(prev => ({
+        ...prev,
+        user: data.user as TelegramUser,
+        isLoading: false,
+        error: null,
+      }))
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Authentication failed'
+
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: errorMessage,
+        error: message,
       }))
-      return null
     }
   }, [])
 
   useEffect(() => {
     const initAuth = async () => {
-      // Check if running in Telegram Web App
       const tg = window.Telegram?.WebApp
-      const isTelegramWebApp = !!tg?.initData
+      const isTelegramWebApp = Boolean(tg)
 
       setState(prev => ({ ...prev, isTelegramWebApp }))
 
-      if (isTelegramWebApp && tg) {
-        // Signal to Telegram that app is ready
+      if (tg?.initData) {
         tg.ready()
         tg.expand()
+        await authenticate(tg.initData)
+        return
+      }
 
-        // Validate with backend
-        await validateAndAuth(tg.initData)
-      } else {
-        // Check for cached user (development mode)
-        const cachedUser = localStorage.getItem(STORAGE_KEY)
+      // DEV fallback only
+      if (import.meta.env.DEV) {
+        const cachedUser = localStorage.getItem(USER_KEY)
         if (cachedUser) {
           try {
-            const user = JSON.parse(cachedUser)
+            const user: TelegramUser = JSON.parse(cachedUser)
             setState(prev => ({
               ...prev,
               user,
               isLoading: false,
             }))
+            return
           } catch {
-            localStorage.removeItem(STORAGE_KEY)
-            setState(prev => ({ ...prev, isLoading: false }))
+            localStorage.removeItem(USER_KEY)
           }
-        } else {
-          setState(prev => ({ ...prev, isLoading: false }))
         }
       }
+
+      setState(prev => ({ ...prev, isLoading: false }))
     }
 
     initAuth()
-  }, [validateAndAuth])
+  }, [authenticate])
 
   const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
-    setState(prev => ({
-      ...prev,
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+
+    setState({
       user: null,
+      isLoading: false,
       error: null,
-    }))
+      isTelegramWebApp: false,
+    })
   }, [])
 
   return {
