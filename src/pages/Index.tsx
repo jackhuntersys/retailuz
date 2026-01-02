@@ -10,11 +10,15 @@ import { Transactions } from '@/components/Transactions';
 import { Analytics } from '@/components/Analytics';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
+import { useTelegramAuth } from "@/components/TelegramProvider";
+
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const { products, transactions, isLoading, addTransaction, getMetrics } = useStore();
   const { toast } = useToast();
+
+  const { user, token, loading } = useTelegramAuth();
 
   const handleScanComplete = (items: TransactionItem[], type: 'purchase' | 'sale') => {
     const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
