@@ -10,7 +10,9 @@ import { Transactions } from '@/components/Transactions';
 import { Analytics } from '@/components/Analytics';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
-import { useTelegramAuth } from "@/components/TelegramProvider";
+import { useTelegram } from "@/components/TelegramProvider";
+import { ChatWidget } from '@/components/ChatWidget';
+import { useTelegramAuth } from '@/hooks/useTelegramAuth';
 
 
 const Index = () => {
@@ -18,7 +20,8 @@ const Index = () => {
   const { products, transactions, isLoading, addTransaction, getMetrics } = useStore();
   const { toast } = useToast();
 
-  const { user, token, loading } = useTelegramAuth();
+  // const { user, token, loading } = useTelegram();
+ 
 
   const handleScanComplete = (items: TransactionItem[], type: 'purchase' | 'sale') => {
     const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -74,6 +77,14 @@ const Index = () => {
         )}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+       {/* AI CHAT — GLOBAL OVERLAY */}
+        {activeTab !== "scan" && (
+        <div className="fixed bottom-32 right-4 z-[2147483647]">
+        <ChatWidget />
+         </div>
+        )}
+     
       <Toaster />
     </div>
   );
